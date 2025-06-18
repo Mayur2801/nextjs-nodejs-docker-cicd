@@ -2,9 +2,9 @@ pipeline {
   agent any
 
   environment {
-    DOCKER_IMAGE_BACKEND = 'yourdockerhubuser/backend:latest'
-    DOCKER_IMAGE_FRONTEND = 'yourdockerhubuser/frontend:latest'
-    EC2_HOST = 'your-ec2-ip'
+    DOCKER_IMAGE_BACKEND = 'mayur2808/backend:latest'
+    DOCKER_IMAGE_FRONTEND = 'mayur2808/frontend:latest'
+    EC2_HOST = 'ec2-54-158-225-63.compute-1.amazonaws.com'
     EC2_USER = 'ubuntu'
     SSH_KEY = credentials('ec2-key')
     DOCKERHUB_CRED = credentials('dockerhub-creds')
