@@ -4,7 +4,7 @@ pipeline {
   environment {
     DOCKER_IMAGE_BACKEND = 'mayur2808/backend:latest'
     DOCKER_IMAGE_FRONTEND = 'mayur2808/frontend:latest'
-    EC2_HOST = 'ec2-54-158-225-63.compute-1.amazonaws.com'
+    EC2_HOST = 'ec2-54-221-16-94.compute-1.amazonaws.com'
     EC2_USER = 'ubuntu'
     SSH_KEY = credentials('ec2-key')
     DOCKERHUB_CRED = credentials('dockerhub-creds')
@@ -30,18 +30,14 @@ pipeline {
 
     stage('Deploy on EC2') {
       steps {
-        sh """
-        ssh -i $SSH_KEY $EC2_USER@$EC2_HOST << 'EOF'
-          docker pull $DOCKER_IMAGE_BACKEND
-          docker pull $DOCKER_IMAGE_FRONTEND
-          docker stop backend || true
-          docker rm backend || true
-          docker stop frontend || true
-          docker rm frontend || true
-          docker run -d --restart unless-stopped -p 3001:3001 --name backend $DOCKER_IMAGE_BACKEND
-          docker run -d --restart unless-stopped -p 80:3000 --name frontend $DOCKER_IMAGE_FRONTEND
-        EOF
-        """
+        sshagent(credentials: ['ec2-key']) {
+          sh """
+            ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << 'EOF'
+            echo "Connected to EC2 instance."
+            docker ps
+            EOF
+          """
+        }
       }
     }
   }
