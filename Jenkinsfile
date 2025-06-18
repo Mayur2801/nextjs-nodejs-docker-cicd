@@ -49,7 +49,6 @@ echo "Deployment done!"
 docker ps
 EOF
   """
-}
 
         }
       }
