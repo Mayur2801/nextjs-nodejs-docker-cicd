@@ -33,7 +33,21 @@ pipeline {
         sshagent(credentials: ['ec2-key']) {
           sh """
             ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << 'EOF'
-echo "Connected to EC2 instance."
+echo "✅ Connected to EC2 instance"
+
+echo "🧼 Cleaning up old containers..."
+docker rm -f backend || true
+docker rm -f frontend || true
+
+echo "⬇️ Pulling latest Docker images..."
+docker pull $DOCKER_IMAGE_BACKEND
+docker pull $DOCKER_IMAGE_FRONTEND
+
+echo "🚀 Starting new containers with updated ports..."
+docker run -d --name backend -p 8081:8080 $DOCKER_IMAGE_BACKEND
+docker run -d --name frontend -p 3000:3000 $DOCKER_IMAGE_FRONTEND
+
+echo "✅ Deployment complete! Running containers:"
 docker ps
 EOF
           """
