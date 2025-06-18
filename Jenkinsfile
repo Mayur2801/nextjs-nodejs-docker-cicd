@@ -33,9 +33,9 @@ pipeline {
         sshagent(credentials: ['ec2-key']) {
           sh """
             ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << 'EOF'
-            echo "Connected to EC2 instance."
-            docker ps
-            EOF
+echo "Connected to EC2 instance."
+docker ps
+EOF
           """
         }
       }
