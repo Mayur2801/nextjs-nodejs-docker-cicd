@@ -1,0 +1,86 @@
+pipeline {
+  agent any
+
+  environment {
+    DOCKER_IMAGE_BACKEND = 'mayur2808/backend:latest'
+    DOCKER_IMAGE_FRONTEND = 'mayur2808/frontend:latest'
+    EC2_HOST = 'ec2-54-221-16-94.compute-1.amazonaws.com'
+    EC2_USER = 'ubuntu'
+    SSH_KEY = credentials('ec2-key')
+    DOCKERHUB_CRED = credentials('dockerhub-creds')
+  }
+
+  stages {
+    stage('Build Images') {
+      steps {
+        sh 'docker build -t $DOCKER_IMAGE_BACKEND ./backend'
+        sh 'docker build -t $DOCKER_IMAGE_FRONTEND ./frontend'
+      }
+    }
+
+    stage('Push Images') {
+      steps {
+        sh """
+          echo "$DOCKERHUB_CRED_PSW" | docker login -u "$DOCKERHUB_CRED_USR" --password-stdin
+          docker push $DOCKER_IMAGE_BACKEND
+          docker push $DOCKER_IMAGE_FRONTEND
+        """
+      }
+    }
+
+    stage('Deploy on EC2 with Docker Compose') {
+      steps {
+        sshagent(credentials: ['ec2-key']) {
+          sh """
+          ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << 'EOF'
+          
+          # Install Docker & Docker Compose if missing
+          if ! command -v docker &> /dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo systemctl start docker
+            sudo systemctl enable docker
+          fi
+
+          if ! command -v docker-compose &> /dev/null; then
+            sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-\$(uname -s)-\$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+          fi
+
+          # Prepare deployment directory
+          mkdir -p ~/deploy
+          cd ~/deploy
+
+          # Write docker-compose.yml for deployment (pull images from DockerHub)
+          cat > docker-compose.yml <<EOL
+version: '3.8'
+
+services:
+  frontend:
+    image: $DOCKER_IMAGE_FRONTEND
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    image: $DOCKER_IMAGE_BACKEND
+    ports:
+      - "8081:3001"
+    restart: unless-stopped
+EOL
+
+          # Stop and remove existing containers, then recreate
+          sudo docker-compose down || true
+          sudo docker-compose pull
+          sudo docker-compose up -d
+          sudo docker ps
+          
+          EOF
+          """
+        }
+      }
+    }
+  }
+}
